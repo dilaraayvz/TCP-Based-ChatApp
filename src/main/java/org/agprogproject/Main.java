@@ -4,31 +4,40 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
+        // Sunucuyu otomatik başlat
+        Server.startServer();
+
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("=== TCP-Based Chat Application ===");
-        System.out.println("1. Start Server");
-        System.out.println("2. Start Client");
-        System.out.println("3. Test Database");
+        System.out.println("1. Register");
+        System.out.println("2. Login");
         System.out.print("Choose an option: ");
-
         int choice = scanner.nextInt();
         scanner.nextLine(); // Buffer temizliği
 
         switch (choice) {
             case 1 -> {
-                System.out.println("Starting server...");
-                Server.startServer(); // Server sınıfındaki startServer metodunu çağır
+                System.out.print("Enter username: ");
+                String username = scanner.nextLine();
+                System.out.print("Enter password: ");
+                String password = scanner.nextLine();
+
+                DatabaseManager.connect();
+                if (DatabaseManager.registerUser(username, password)) {
+                    System.out.println("User registered successfully!");
+                } else {
+                    System.out.println("Registration failed. Username might already exist.");
+                }
+                DatabaseManager.close();
             }
             case 2 -> {
-                System.out.println("Starting client...");
-                Client.startClient(); // Client sınıfındaki startClient metodunu çağır
-            }
-            case 3 -> {
-                System.out.println("Testing database...");
-                DatabaseManager.connect(); // Veritabanına bağlan
-                DatabaseManager.addUser("test_user"); // Kullanıcı ekle
-                DatabaseManager.close(); // Bağlantıyı kapat
+                System.out.print("Enter username: ");
+                String username = scanner.nextLine();
+                System.out.print("Enter password: ");
+                String password = scanner.nextLine();
+
+                Client.startClient(username, password);
             }
             default -> System.out.println("Invalid option. Exiting.");
         }
