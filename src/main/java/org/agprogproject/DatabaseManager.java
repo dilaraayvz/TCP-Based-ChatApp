@@ -5,143 +5,151 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseManager {
-    private static Connection connection;
 
-    // Veritabanına bağlanma
-    public static void connect() {
+    private static final String URL = "jdbc:sqlite:chatapp.db";  // Veritabanı dosyasının yolu
+
+    // Veritabanı bağlantısı sağlanır
+    public static Connection getConnection() {
         try {
-            Class.forName("org.sqlite.JDBC");
-            connection = DriverManager.getConnection("jdbc:sqlite:messaging_app.db");
-            createTables();
-            System.out.println("Database connected successfully.");
-        } catch (Exception e) {
+            return DriverManager.getConnection(URL);
+        } catch (SQLException e) {
             e.printStackTrace();
+            return null;
         }
     }
 
-    // Veritabanı bağlantısını kapatma
-    public static void close() {
-        try {
-            if (connection != null) {
-                connection.close();
-                System.out.println("Database connection closed.");
-            }
+    // Kullanıcıyı veritabanına ekler
+    public static void addUser(User user) {
+        String query = "INSERT INTO users (username, password, is_online) VALUES (?, ?, ?)";
+
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, user.getPassword());  // Şifreyi düz metin olarak alıyoruz
+            stmt.setBoolean(3, user.isOnline());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+    // Tüm kullanıcıları getirir
+    public static List<User> getAllUsers() {
+        List<User> users = new ArrayList<>();
+        String query = "SELECT * FROM users";
 
-    // Tabloları oluşturma
-    private static void createTables() throws SQLException {
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL UNIQUE,
-                    password TEXT NOT NULL,
-                    is_online BOOLEAN DEFAULT FALSE
-                );
-            """);
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS messages (
-                    message_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    sender TEXT NOT NULL,
-                    receiver TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    is_delivered BOOLEAN DEFAULT FALSE
-                );
-            """);
-        }
-    }
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            ResultSet rs = stmt.executeQuery();
 
-    // Kullanıcı kaydı
-    public static boolean registerUser(String username, String password) {
-        String query = "INSERT INTO users (username, password, is_online) VALUES (?, ?, false)";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, username);
-            pstmt.setString(2, password);
-            pstmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            if (e.getMessage().contains("UNIQUE")) {
-                System.out.println("Username already exists: " + username);
-            } else {
-                e.printStackTrace();
+            while (rs.next()) {
+                String username = rs.getString("username");
+                String password = rs.getString("password");  // Şifreyi düz metin olarak alıyoruz
+                boolean isOnline = rs.getBoolean("is_online");
+
+                users.add(new User(username, password, isOnline));
             }
-            return false;
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-    }
 
-    // Kullanıcı giriş işlemi
-    public static boolean loginUser(String username, String password) {
-        String query = "SELECT password FROM users WHERE username = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();
+        return users;
+    }
+    // Kullanıcıyı veritabanından alır
+    public static User getUser(String username) {
+        String query = "SELECT * FROM users WHERE username = ?";
+        User user = null;
+
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
             if (rs.next()) {
-                String storedPassword = rs.getString("password");
-                return storedPassword.equals(password); // Şifre doğrulama
-            } else {
-                System.out.println("Username not found: " + username);
+                String password = rs.getString("password");
+                boolean isOnline = rs.getBoolean("is_online");
+                user = new User(username, password, isOnline);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
+
+        return user;
     }
 
-    // Kullanıcı çevrimiçi durumu güncelleme
+    // Kullanıcıyı çevrimiçi yapar
     public static void setUserOnline(String username, boolean isOnline) {
         String query = "UPDATE users SET is_online = ? WHERE username = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setBoolean(1, isOnline);
-            pstmt.setString(2, username);
-            pstmt.executeUpdate();
+
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setBoolean(1, isOnline);
+            stmt.setString(2, username);
+            stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // Mesaj kaydetme
-    public static void saveMessage(String sender, String receiver, String content) {
-        String query = "INSERT INTO messages (sender, receiver, content, is_delivered) VALUES (?, ?, ?, false)";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, sender);
-            pstmt.setString(2, receiver);
-            pstmt.setString(3, content);
-            pstmt.executeUpdate();
+    // Mesajı veritabanına kaydeder
+    public static void addMessage(Message message) {
+        String query = "INSERT INTO messages (sender, receivers, content, timestamp, hash) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, message.getSender().getUsername());
+            stmt.setString(2, getReceiversAsString(message.getReceivers()));  // Alıcıları string olarak kaydediyoruz
+            stmt.setString(3, message.getContent());
+            stmt.setLong(4, message.getTimestamp());
+            stmt.setString(5, message.getHash());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // Teslim edilmemiş mesajları alma
-    public static List<String> getUndeliveredMessages(String receiver) {
-        String query = "SELECT sender, content FROM messages WHERE receiver = ? AND is_delivered = false";
-        List<String> messages = new ArrayList<>();
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, receiver);
-            ResultSet rs = pstmt.executeQuery();
+    // Mesajları alır
+    public static List<Message> getMessages(String username) {
+        String query = "SELECT * FROM messages WHERE receivers LIKE ? OR receivers = 'all'";
+        List<Message> messages = new ArrayList<>();
+
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, "%" + username + "%");  // Kullanıcının alıcı olduğu mesajları alır
+            ResultSet rs = stmt.executeQuery();
+
             while (rs.next()) {
                 String sender = rs.getString("sender");
+                String receivers = rs.getString("receivers");
                 String content = rs.getString("content");
-                messages.add("From " + sender + ": " + content);
+                long timestamp = rs.getLong("timestamp");
+                String hash = rs.getString("hash");
+
+                User senderUser = new User(sender, "", true);  // Şu an için password boş
+                List<User> receiverList = getReceiversFromString(receivers);
+
+                messages.add(new Message(senderUser, receiverList, content));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return messages;
     }
 
-    // Teslim edilmiş olarak işaretleme
-    public static void markMessagesAsDelivered(String receiver) {
-        String query = "UPDATE messages SET is_delivered = true WHERE receiver = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setString(1, receiver);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    // Alıcıları string formatından liste formatına dönüştürür
+    private static List<User> getReceiversFromString(String receivers) {
+        List<User> userList = new ArrayList<>();
+        String[] usernames = receivers.split(",");
+
+        for (String username : usernames) {
+            userList.add(new User(username.trim(), "", true));  // Şu an için password boş
         }
+
+        return userList;
+    }
+
+    // Alıcıları liste formatından string formatına dönüştürür
+    private static String getReceiversAsString(List<User> receivers) {
+        StringBuilder receiverString = new StringBuilder();
+
+        for (User user : receivers) {
+            receiverString.append(user.getUsername()).append(", ");
+        }
+
+        return receiverString.toString().isEmpty() ? "all" : receiverString.toString();  // Eğer alıcı yoksa, 'all' yazılır
     }
 }

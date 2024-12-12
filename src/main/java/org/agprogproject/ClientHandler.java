@@ -1,70 +1,70 @@
 package org.agprogproject;
 
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
+import java.util.List;
 
-public class ClientHandler implements Runnable {
-    private final Socket socket;
-    private DataInputStream input;
-    private DataOutputStream output;
-    private String username;
+public class ClientHandler extends Thread {
+    private Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private User user;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
     }
 
+    public User getUser() {
+        return user;
+    }
+
     @Override
     public void run() {
         try {
-            input = new DataInputStream(socket.getInputStream());
-            output = new DataOutputStream(socket.getOutputStream());
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new PrintWriter(socket.getOutputStream(), true);
 
-            // Kullanıcı adı iste
-            output.writeUTF("Enter your username: ");
-            username = input.readUTF();
-            System.out.println("Received username: " + username);
+            // Kullanıcı adı alınıyor
+            out.println("Kullanıcı adınızı girin: ");
+            String username = in.readLine();
+            out.println("Sifrenizi girin: ");
+            String password = in.readLine();
+            this.user = new User(username, password,false);  // Başlangıçta offline
 
-            // Şifre iste
-            output.writeUTF("Enter your password: ");
-            String password = input.readUTF();
-            System.out.println("Received password for username: " + username);
+            System.out.println(username + " sunucuya bağlandı.");
+            this.user.setOnline(true);  // Kullanıcı online oldu
 
-            // Kullanıcı doğrulama
-            if (DatabaseManager.loginUser(username, password)) {
-                System.out.println("User " + username + " logged in.");
-                DatabaseManager.setUserOnline(username, true); // Çevrimiçi durumu güncelle
-                Server.addUser(username, socket); // Kullanıcıyı sunucuya ekle
-                output.writeUTF("Welcome, " + username + "! You are now online."); // Başarılı giriş yanıtı
-            } else {
-                output.writeUTF("Invalid username or password.");
+            // Mesajları dinlemeye başlıyoruz
+            String message;
+            while ((message = in.readLine()) != null) {
+                if (message.equalsIgnoreCase("exit")) {
+                    break;
+                }
+                System.out.println(user.getUsername() + ": " + message);
+
+                // Mesajı sunucuya ilet
+                Message msg = new Message(user, List.of(user), message);
+                Server.sendMessageToAllUsers(msg);
             }
         } catch (IOException e) {
-            System.out.println("Client disconnected: " + username);
+            e.printStackTrace();
         } finally {
-            disconnectUser();
-        }
-    }
-
-    // Mesaj gönderme
-    public void sendMessage(String message) {
-        try {
-            output.writeUTF(message);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Kullanıcıyı bağlantıdan çıkarma
-    private void disconnectUser() {
-        try {
-            if (username != null) {
-                DatabaseManager.setUserOnline(username, false); // Kullanıcıyı çevrimdışı yap
-                Server.removeUser(username); // Kullanıcıyı sunucudan çıkar
-                System.out.println("User " + username + " is now offline.");
+            try {
+                // Kullanıcıyı offline yapıyoruz
+                if (user != null) {
+                    user.setOnline(false);
+                }
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+        }
+    }
+
+    // Public olarak tanımlandı
+    public void sendMessageToUser(User receiver, Message message) {
+        if (this.user.equals(receiver)) {
+            out.println("Yeni mesaj: " + message.getContent());
         }
     }
 }

@@ -16,8 +16,8 @@ public class Main {
         switch (choice) {
             case 1 -> {
                 // Sunucuyu başlat
-                DatabaseManager.connect();
-                Server.startServer();
+                DatabaseManager.getConnection();  // DB bağlantısını başlatıyoruz
+                Server.startServer();  // Sunucu başlatılıyor
             }
             case 2 -> {
                 // İstemciyi başlat
@@ -26,6 +26,7 @@ public class Main {
                 System.out.print("Enter password: ");
                 String password = scanner.nextLine();
 
+                // Kullanıcıyı oluşturup, istemci başlatıyoruz
                 Client.startClient(username, password);
             }
             default -> System.out.println("Invalid option. Exiting.");

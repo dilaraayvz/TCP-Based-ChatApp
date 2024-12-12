@@ -1,42 +1,50 @@
 package org.agprogproject;
 
 import java.io.*;
-import java.net.Socket;
-import java.util.Scanner;
+import java.net.*;
 
 public class Client {
-    private static final String SERVER_ADDRESS = "localhost";
-    private static final int SERVER_PORT = 12345;
-
     public static void startClient(String username, String password) {
+        final String SERVER_ADDRESS = "localhost"; // Sunucu adresi
+        final int SERVER_PORT = 12345; // Sunucu portu
+
         try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT)) {
-            System.out.println("Connected to server...");
-            DataInputStream input = new DataInputStream(socket.getInputStream());
-            DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
 
-            // Sunucudan "Enter your username:" bekle
-            String serverMessage = input.readUTF();
-            if (serverMessage.equals("Enter your username:")) {
-                System.out.println("Server: " + serverMessage);
-                output.writeUTF(username); // Kullanıcı adını gönder
-            }
+            // Kullanıcı adı ve şifre doğrulama kısmı (gereksinime göre eklenebilir)
+            out.println(username);  // Sunucuya kullanıcı adı gönderilir
+            out.println(password);  // Sunucuya şifre gönderilir
 
-            // Sunucudan "Enter your password:" bekle
-            serverMessage = input.readUTF();
-            if (serverMessage.equals("Enter your password:")) {
-                System.out.println("Server: " + serverMessage);
-                output.writeUTF(password); // Şifreyi gönder
-            }
+            // Mesajları almak için ayrı bir thread başlatılır
+            new Thread(() -> receiveMessages(in)).start();
 
-            // Giriş işleminin sonucunu bekle
-            serverMessage = input.readUTF();
-            if (serverMessage.startsWith("Welcome")) {
-                System.out.println(serverMessage);
-            } else {
-                System.out.println("Login failed: " + serverMessage);
+            // Mesaj gönderme döngüsü
+            while (true) {
+                System.out.print("Mesajınızı yazın (çıkmak için 'exit' yazın): ");
+                String message = userInput.readLine();
+
+                if (message.equalsIgnoreCase("exit")) {
+                    out.println("exit");
+                    break;
+                }
+
+                out.println(message);  // Sunucuya mesaj gönderilir
             }
         } catch (IOException e) {
-            System.out.println("Error: Could not connect to the server.");
+            e.printStackTrace();
+        }
+    }
+
+    // Sunucudan gelen mesajları ekrana yazdıran metod
+    private static void receiveMessages(BufferedReader in) {
+        try {
+            String message;
+            while ((message = in.readLine()) != null) {
+                System.out.println("Yeni mesaj: " + message);
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
