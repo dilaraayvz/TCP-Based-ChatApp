@@ -1,7 +1,7 @@
 package org.agprogproject;
 
 import java.io.*;
-import java.net.*;
+import java.net.Socket;
 import java.util.Scanner;
 
 public class Client {
@@ -10,41 +10,33 @@ public class Client {
 
     public static void startClient(String username, String password) {
         try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT)) {
+            System.out.println("Connected to server...");
             DataInputStream input = new DataInputStream(socket.getInputStream());
             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-            Scanner scanner = new Scanner(System.in);
 
-            // Kullanıcı adı ve şifre gönderilir
-            output.writeUTF(username);
-            output.writeUTF(password);
+            // Sunucudan "Enter your username:" bekle
+            String serverMessage = input.readUTF();
+            if (serverMessage.equals("Enter your username:")) {
+                System.out.println("Server: " + serverMessage);
+                output.writeUTF(username); // Kullanıcı adını gönder
+            }
 
-            String serverResponse = input.readUTF();
-            if (serverResponse.startsWith("Welcome")) {
-                System.out.println(serverResponse);
+            // Sunucudan "Enter your password:" bekle
+            serverMessage = input.readUTF();
+            if (serverMessage.equals("Enter your password:")) {
+                System.out.println("Server: " + serverMessage);
+                output.writeUTF(password); // Şifreyi gönder
+            }
 
-                // Mesaj gönderme ve alma döngüsü
-                new Thread(() -> {
-                    try {
-                        while (true) {
-                            String receivedMessage = input.readUTF();
-                            System.out.println(receivedMessage);
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Disconnected from server.");
-                    }
-                }).start();
-
-                while (true) {
-                    System.out.print("Enter receiver: ");
-                    String receiver = scanner.nextLine();
-                    System.out.print("Enter message: ");
-                    String message = scanner.nextLine();
-                    output.writeUTF(receiver + ":" + message);
-                }
+            // Giriş işleminin sonucunu bekle
+            serverMessage = input.readUTF();
+            if (serverMessage.startsWith("Welcome")) {
+                System.out.println(serverMessage);
             } else {
-                System.out.println(serverResponse);
+                System.out.println("Login failed: " + serverMessage);
             }
         } catch (IOException e) {
+            System.out.println("Error: Could not connect to the server.");
             e.printStackTrace();
         }
     }

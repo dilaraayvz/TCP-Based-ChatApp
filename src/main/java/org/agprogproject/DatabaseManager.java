@@ -73,7 +73,7 @@ public class DatabaseManager {
         }
     }
 
-    // Kullanıcı oturum açma
+    // Kullanıcı giriş işlemi
     public static boolean loginUser(String username, String password) {
         String query = "SELECT password FROM users WHERE username = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
@@ -91,6 +91,18 @@ public class DatabaseManager {
         return false;
     }
 
+    // Kullanıcı çevrimiçi durumu güncelleme
+    public static void setUserOnline(String username, boolean isOnline) {
+        String query = "UPDATE users SET is_online = ? WHERE username = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setBoolean(1, isOnline);
+            pstmt.setString(2, username);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // Mesaj kaydetme
     public static void saveMessage(String sender, String receiver, String content) {
         String query = "INSERT INTO messages (sender, receiver, content, is_delivered) VALUES (?, ?, ?, false)";
@@ -99,7 +111,6 @@ public class DatabaseManager {
             pstmt.setString(2, receiver);
             pstmt.setString(3, content);
             pstmt.executeUpdate();
-            System.out.println("Message from " + sender + " to " + receiver + " saved.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -129,7 +140,6 @@ public class DatabaseManager {
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setString(1, receiver);
             pstmt.executeUpdate();
-            System.out.println("Messages for " + receiver + " marked as delivered.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
