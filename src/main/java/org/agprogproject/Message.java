@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Message {
     private User sender;
-    private List<User> receivers;  // Alıcılar bir liste olarak tutuluyor
+    private List<User> receivers;  // Alıcılar bir liste olarak tutulur
     private String content;
     private long timestamp;
     private String hash;
@@ -15,8 +15,8 @@ public class Message {
         this.sender = sender;
         this.receivers = receivers;
         this.content = content;
-        this.timestamp = System.currentTimeMillis();  // Mesajın gönderildiği zamanı alıyoruz
-        this.hash = generateHash(content);  // Mesajın hash'ini oluşturuyoruz
+        this.timestamp = System.currentTimeMillis();  // Mesajın gönderim zamanı
+        this.hash = generateHash(content);  // Mesajın hash'i
     }
 
     private String generateHash(String content) {
@@ -52,20 +52,5 @@ public class Message {
 
     public String getHash() {
         return hash;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder receiversList = new StringBuilder();
-        for (User receiver : receivers) {
-            receiversList.append(receiver.getUsername()).append(", ");
-        }
-        return "Message{" +
-                "sender=" + sender.getUsername() +
-                ", receivers=" + receiversList.toString() +
-                ", content='" + content + '\'' +
-                ", timestamp=" + timestamp +
-                ", hash='" + hash + '\'' +
-                '}';
     }
 }

@@ -1,49 +1,54 @@
 package org.agprogproject;
 
 import java.io.*;
-import java.net.*;
+import java.net.Socket;
 
 public class Client {
+
     public static void startClient(String username, String password) {
-        final String SERVER_ADDRESS = "localhost"; // Sunucu adresi
-        final int SERVER_PORT = 12345; // Sunucu portu
+        try (Socket socket = new Socket("localhost", 12345);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in))) {
 
-        try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT)) {
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+            // Kullanıcı giriş bilgilerini gönder
+            out.println(username);
+            out.println(password);
 
-            // Kullanıcı adı ve şifre doğrulama kısmı (gereksinime göre eklenebilir)
-            out.println(username);  // Sunucuya kullanıcı adı gönderilir
-            out.println(password);  // Sunucuya şifre gönderilir
+            // Sunucudan yanıt beklenir
+            String response;
+            while ((response = in.readLine()) != null) {
+                System.out.println(response);
 
-            // Mesajları almak için ayrı bir thread başlatılır
-            new Thread(() -> receiveMessages(in)).start();
-
-            // Mesaj gönderme döngüsü
-            while (true) {
-                System.out.print("Mesajınızı yazın (çıkmak için 'exit' yazın): ");
-                String message = userInput.readLine();
-
-                if (message.equalsIgnoreCase("exit")) {
-                    out.println("exit");
+                // Giriş başarılıysa mesajlaşma başlasın
+                if (response.equals("Giriş başarılı!")) {
+                    System.out.println("Mesaj göndermeye başlayabilirsiniz:");
                     break;
                 }
-
-                out.println(message);  // Sunucuya mesaj gönderilir
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
-    // Sunucudan gelen mesajları ekrana yazdıran metod
-    private static void receiveMessages(BufferedReader in) {
-        try {
-            String message;
-            while ((message = in.readLine()) != null) {
-                System.out.println("Yeni mesaj: " + message);
+            // Mesaj gönderme ve alma döngüsü
+            new Thread(() -> {
+                try {
+                    String serverMessage;
+                    while ((serverMessage = in.readLine()) != null) {
+                        System.out.println("Sunucudan gelen mesaj: " + serverMessage);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            // Kullanıcıdan mesaj al ve sunucuya gönder
+            String userMessage;
+            while ((userMessage = userInput.readLine()) != null) {
+                if (userMessage.equalsIgnoreCase("exit")) {
+                    System.out.println("Bağlantı sonlandırılıyor...");
+                    break;
+                }
+                out.println(userMessage);  // Mesajı sunucuya gönder
             }
+
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -2,7 +2,7 @@ package org.agprogproject;
 
 public class User {
     private String username;
-    private String password;  // Şifre alanı
+    private String password;
     private boolean isOnline;
 
     public User(String username, String password, boolean isOnline) {

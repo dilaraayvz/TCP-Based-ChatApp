@@ -1,21 +1,15 @@
 package org.agprogproject;
 
 import java.io.*;
-import java.net.*;
-import java.util.List;
+import java.net.Socket;
 
-public class ClientHandler extends Thread {
-    private Socket socket;
-    private PrintWriter out;
+public class ClientHandler implements Runnable {
+    private final Socket socket;
     private BufferedReader in;
-    private User user;
+    private PrintWriter out;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
-    }
-
-    public User getUser() {
-        return user;
     }
 
     @Override
@@ -24,47 +18,45 @@ public class ClientHandler extends Thread {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            // Kullanıcı adı alınıyor
-            out.println("Kullanıcı adınızı girin: ");
-            String username = in.readLine();
-            out.println("Sifrenizi girin: ");
-            String password = in.readLine();
-            this.user = new User(username, password,false);  // Başlangıçta offline
+            // Kullanıcı giriş bilgilerini alın ve doğrulayın
+            String username;
+            String password;
 
-            System.out.println(username + " sunucuya bağlandı.");
-            this.user.setOnline(true);  // Kullanıcı online oldu
+            while (true) {
+                username = in.readLine();
+                password = in.readLine();
 
-            // Mesajları dinlemeye başlıyoruz
-            String message;
-            while ((message = in.readLine()) != null) {
-                if (message.equalsIgnoreCase("exit")) {
+                if (DatabaseManager.isValidUser(username, password)) {
+                    out.println("Giriş başarılı!");
+                    break;
+                } else {
+                    out.println("Kullanıcı adı veya şifre yanlış. Tekrar deneyin.");
+                }
+            }
+
+            // Mesajları alıp işleyin
+            String clientMessage;
+            while ((clientMessage = in.readLine()) != null) {
+                System.out.println("Kullanıcıdan gelen mesaj: " + clientMessage);
+
+                // "exit" mesajı ile bağlantı sonlandırılır
+                if (clientMessage.equalsIgnoreCase("exit")) {
+                    System.out.println(username + " bağlantıyı sonlandırdı.");
                     break;
                 }
-                System.out.println(user.getUsername() + ": " + message);
 
-                // Mesajı sunucuya ilet
-                Message msg = new Message(user, List.of(user), message);
-                Server.sendMessageToAllUsers(msg);
+                // Mesajı tüm istemcilere veya hedeflenen kişilere yönlendirebilirsiniz
+                // Bu kısımda mesajı işleme ve gönderme mantığını ekleyebilirsiniz
             }
+
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Bağlantı sonlandırıldı: " + e.getMessage());
         } finally {
             try {
-                // Kullanıcıyı offline yapıyoruz
-                if (user != null) {
-                    user.setOnline(false);
-                }
                 socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-    }
-
-    // Public olarak tanımlandı
-    public void sendMessageToUser(User receiver, Message message) {
-        if (this.user.equals(receiver)) {
-            out.println("Yeni mesaj: " + message.getContent());
         }
     }
 }

@@ -5,31 +5,21 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-
-        System.out.println("=== TCP-Based Chat Application Test ===");
-        System.out.println("1. Start Server");
-        System.out.println("2. Start Client");
-        System.out.print("Choose an option: ");
+        System.out.println("1. Sunucuyu Başlat");
+        System.out.println("2. İstemciyi Başlat");
         int choice = scanner.nextInt();
-        scanner.nextLine(); // Buffer temizliği
+        scanner.nextLine();
 
-        switch (choice) {
-            case 1 -> {
-                // Sunucuyu başlat
-                DatabaseManager.getConnection();  // DB bağlantısını başlatıyoruz
-                Server.startServer();  // Sunucu başlatılıyor
-            }
-            case 2 -> {
-                // İstemciyi başlat
-                System.out.print("Enter username: ");
-                String username = scanner.nextLine();
-                System.out.print("Enter password: ");
-                String password = scanner.nextLine();
-
-                // Kullanıcıyı oluşturup, istemci başlatıyoruz
-                Client.startClient(username, password);
-            }
-            default -> System.out.println("Invalid option. Exiting.");
+        if (choice == 1) {
+            Server.startServer();
+        } else if (choice == 2) {
+            System.out.print("Kullanıcı adı: ");
+            String username = scanner.nextLine();
+            System.out.print("Şifre: ");
+            String password = scanner.nextLine();
+            Client.startClient(username, password);
+        } else {
+            System.out.println("Hatalı seçim.");
         }
     }
 }
