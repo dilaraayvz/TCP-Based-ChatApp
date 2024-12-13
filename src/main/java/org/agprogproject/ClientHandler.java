@@ -28,6 +28,8 @@ public class ClientHandler implements Runnable {
 
                 if (DatabaseManager.isValidUser(username, password)) {
                     currentUser = DatabaseManager.getUser(username); // Mevcut kullanıcıyı yükle
+                    Server.registerClientHandler(username, this);    // Kullanıcıyı server'a kaydet
+                    DatabaseManager.updateUserStatus(username, true); // Kullanıcıyı çevrimiçi olarak işaretle
                     out.println("Giriş başarılı!");
                     break;
                 } else {

@@ -23,6 +23,17 @@ public class DatabaseManager {
         }
     }
 
+    public static void updateUserStatus(String username, boolean isOnline) {
+        String query = "UPDATE users SET is_online = ? WHERE username = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setBoolean(1, isOnline);
+            stmt.setString(2, username);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // Veritabanı tablolarını kontrol eder ve yoksa oluşturur
     private static void createTablesIfNotExists(Connection connection) {
         try (Statement stmt = connection.createStatement()) {
