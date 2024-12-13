@@ -11,7 +11,7 @@ public class Message {
     private long timestamp;
     private String hash;
 
-    public Message(User sender, List<User> receivers, String content) {
+    public Message(User sender, List<User> receivers, String content,long timestamp,String hash) {
         this.sender = sender;
         this.receivers = receivers;
         this.content = content;

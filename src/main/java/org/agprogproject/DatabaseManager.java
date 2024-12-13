@@ -1,6 +1,12 @@
 package org.agprogproject;
 
 import java.sql.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
+
+import com.google.gson.Gson;
+
 
 public class DatabaseManager {
     private static final String DB_URL = "jdbc:sqlite:messaging_app.db";
@@ -77,12 +83,35 @@ public class DatabaseManager {
         }
     }
 
+    // Kullanıcıyı getirme (username'e göre)
+    public static User getUser(String username) {
+        String query = "SELECT * FROM users WHERE username = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new User(
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getBoolean("is_online")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Kullanıcı bulunamazsa null döner
+    }
+
     // Mesaj ekleme
-    public static void addMessage(String sender, String receivers, String content, long timestamp, String hash) {
+    // Mesaj ekleme
+    public static void addMessage(User sender, List<User> receivers, String content, long timestamp, String hash) {
         String query = "INSERT INTO messages (sender, receivers, content, timestamp, hash) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setString(1, sender);
-            stmt.setString(2, receivers);
+            Gson gson = new Gson();
+            String receiversJson = gson.toJson(receivers.stream().map(User::getUsername).toList()); // Kullanıcı adlarını JSON'a çevir
+
+            stmt.setString(1, sender.getUsername());
+            stmt.setString(2, receiversJson); // JSON olarak sakla
             stmt.setString(3, content);
             stmt.setLong(4, timestamp);
             stmt.setString(5, hash);
@@ -90,5 +119,84 @@ public class DatabaseManager {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public static Message getMessage(int messageId) {
+        String query = "SELECT * FROM messages WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, messageId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                User sender = getUser(rs.getString("sender"));
+                String receiversJson = rs.getString("receivers");
+
+                // JSON'dan listeye dönüştür
+                Gson gson = new Gson();
+                List<String> receiverUsernames = Arrays.asList(gson.fromJson(receiversJson, String[].class));
+                List<User> receivers = new ArrayList<>();
+                for (String username : receiverUsernames) {
+                    User user = getUser(username);
+                    if (user != null) {
+                        receivers.add(user);
+                    }
+                }
+
+                return new Message(
+                        sender,
+                        receivers,
+                        rs.getString("content"),
+                        rs.getLong("timestamp"),
+                        rs.getString("hash")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Mesaj bulunamazsa null döner
+    }
+
+
+    // Yardımcı metod: Alıcıları string'e çevirme
+    private static String convertReceiversToString(List<User> receivers) {
+        StringBuilder sb = new StringBuilder();
+        for (User user : receivers) {
+            sb.append(user.getUsername()).append(",");
+        }
+        if (sb.length() > 0) {
+            sb.setLength(sb.length() - 1); // Son virgülü kaldır
+        }
+        return sb.toString();
+    }
+
+    // Yardımcı metod: Alıcıları string'den listeye çevirme
+    private static List<User> convertStringToReceivers(String receivers) {
+        List<User> users = new ArrayList<>();
+        String[] receiverArray = receivers.split(",");
+        for (String username : receiverArray) {
+            User user = getUser(username.trim());
+            if (user != null) {
+                users.add(user);
+            }
+        }
+        return users;
+    }
+
+    public static List<User> getAllOnlineUsers(String excludeUsername) {
+        List<User> onlineUsers = new ArrayList<>();
+        String query = "SELECT * FROM users WHERE is_online = 1 AND username != ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, excludeUsername);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                onlineUsers.add(new User(
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getBoolean("is_online")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return onlineUsers;
     }
 }
