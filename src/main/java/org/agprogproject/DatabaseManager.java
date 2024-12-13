@@ -45,7 +45,7 @@ public class DatabaseManager {
                     """;
             stmt.execute(createMessagesTable);
 
-            System.out.println("Tablolar başarıyla kontrol edildi veya oluşturuldu.");
+            //System.out.println("Tablolar başarıyla kontrol edildi veya oluşturuldu.");
         } catch (SQLException e) {
             e.printStackTrace();
         }

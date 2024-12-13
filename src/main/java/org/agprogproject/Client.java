@@ -19,10 +19,13 @@ public class Client {
             String response;
             while ((response = in.readLine()) != null) {
                 System.out.println(response);
-
                 // Giriş başarılıysa mesajlaşma başlasın
                 if (response.equals("Giriş başarılı!")) {
-                    System.out.println("Mesaj göndermeye başlayabilirsiniz:");
+                    System.out.println("Mesaj göndermeye başlayabilirsiniz.");
+                    System.out.println("Formatlar:");
+                    System.out.println("Bir kişiye mesaj: [alıcı]: [mesaj]");
+                    System.out.println("Birden fazla kişiye mesaj: [alıcı1, alıcı2]: [mesaj]");
+                    System.out.println("Herkese mesaj: all: [mesaj]");
                     break;
                 }
             }
@@ -46,7 +49,13 @@ public class Client {
                     System.out.println("Bağlantı sonlandırılıyor...");
                     break;
                 }
-                out.println(userMessage);  // Mesajı sunucuya gönder
+
+                // Mesaj formatını kontrol et
+                if (userMessage.matches("^.+: .+$")) {
+                    out.println(userMessage);  // Mesajı sunucuya gönder
+                } else {
+                    System.out.println("Hatalı format. Doğru format: [alıcı]: [mesaj]");
+                }
             }
 
         } catch (IOException e) {
