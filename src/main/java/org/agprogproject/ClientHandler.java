@@ -76,6 +76,8 @@ public class ClientHandler implements Runnable {
 
             // Alıcıları listeye dönüştür
             List<User> receivers = new ArrayList<>();
+            boolean invalidReceiverFound = false;
+
             if (receiversPart.equalsIgnoreCase("all")) {
                 // Tüm kullanıcılara gönder
                 receivers = DatabaseManager.getAllOnlineUsers(currentUser.getUsername());
@@ -87,14 +89,25 @@ public class ClientHandler implements Runnable {
                         receivers.add(user);
                     } else {
                         out.println("Alıcı bulunamadı: " + receiverUsername.trim());
+                        invalidReceiverFound = true;
                     }
                 }
+            }
+
+            // Eğer geçersiz alıcı varsa mesajı kaydetme ve işlemi sonlandır
+            if (invalidReceiverFound || receivers.isEmpty()) {
+                out.println("Bazı alıcılar bulunamadı veya alıcı listesi boş. Mesaj veritabanına kaydedilmedi.");
+                return;
             }
 
             // Mesajı veritabanına kaydet
             long timestamp = System.currentTimeMillis();
             String hash = generateHash(messageContent); // Hash oluştur
-            DatabaseManager.addMessage(currentUser, receivers, messageContent, timestamp, hash);
+            if (!receivers.isEmpty()) {
+                DatabaseManager.addMessage(currentUser, receivers, messageContent, timestamp, hash);
+            } else {
+                out.println("Alıcı listesi boş. Mesaj kaydedilmedi.");
+            }
 
             // Mesajı alıcılara gönder
             for (User receiver : receivers) {
